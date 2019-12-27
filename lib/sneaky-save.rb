@@ -1,9 +1,10 @@
+# frozen_string_literal: true
+
 #--
 # Copyright (c) 2011 {PartyEarth LLC}[http://partyearth.com]
 # mailto:kgoslar@partyearth.com
 #++
 module SneakySave
-
   # Saves the record without running callbacks/validations.
   # Returns true if the record is changed.
   # @note - Does not reload updated record by default.
@@ -12,11 +13,9 @@ module SneakySave
   #
   # @return [false, true]
   def sneaky_save
-    begin
-      sneaky_create_or_update
-    rescue ActiveRecord::StatementInvalid
-      false
-    end
+    sneaky_create_or_update
+  rescue ActiveRecord::StatementInvalid
+    false
   end
 
   # Saves record without running callbacks/validations.
@@ -36,28 +35,10 @@ module SneakySave
   # Performs INSERT query without running any callbacks
   # @return [false, true]
   def sneaky_create
-    prefetch_pk_allowed = sneaky_connection.prefetch_primary_key?(self.class.table_name)
-
-    if id.nil? && prefetch_pk_allowed
-      self.id = sneaky_connection.next_sequence_value(self.class.sequence_name)
-    end
-
     attributes_values = sneaky_attributes_values
-
-    # Remove the id field for databases like Postgres
-    # which fail with id passed as NULL
-    if id.nil? && !prefetch_pk_allowed
-      attributes_values.reject! { |key, _| key.name == 'id' }
-    end
-
-    if attributes_values.empty?
-      new_id = self.class.unscoped.insert(sneaky_connection.empty_insert_statement_value)
-    else
-      new_id = self.class.unscoped.insert(attributes_values)
-    end
-
+    new_id = self.class._insert_record(attributes_values)
     @new_record = false
-    !!(self.id ||= new_id)
+    (self.id ||= new_id).present?
   end
 
   # Performs update query without running callbacks
@@ -70,28 +51,12 @@ module SneakySave
 
     changed_attributes = sneaky_update_fields
 
-    # Serialize values for rails3 before updating
-    unless sneaky_new_rails?
-      serialized_fields = self.class.serialized_attributes.keys & changed_attributes.keys
-      serialized_fields.each do |field|
-        changed_attributes[field] = @attributes[field].serialized_value
-      end
-    end
-
-    !self.class.unscoped.where(pk => original_id).
-      update_all(changed_attributes).zero?
+    !self.class.unscoped.where(pk => original_id)
+         .update_all(changed_attributes).zero?
   end
 
   def sneaky_attributes_values
-    attribute_values =  case rails_version
-                        when (5..6)
-                          send :attributes_for_create, attribute_names
-                        when 4
-                          send :arel_attributes_with_values_for_create, attribute_names
-                        else
-                          send :arel_attributes_values
-                        end
-    attribute_values
+    attributes_with_values(attributes_for_create(attribute_names))
   end
 
   def sneaky_update_fields
@@ -101,20 +66,8 @@ module SneakySave
   end
 
   def sneaky_connection
-    if sneaky_new_rails?
-      self.class.connection
-    else
-      connection
-    end
-  end
-
-  def sneaky_new_rails?
-    rails_version > 3
-  end
-
-  def rails_version
-    ActiveRecord::VERSION::STRING.to_i
+    self.class.connection
   end
 end
 
-ActiveRecord::Base.send :include, SneakySave
+ActiveRecord::Base.include SneakySave

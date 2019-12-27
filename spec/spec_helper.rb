@@ -6,13 +6,13 @@ shared_context "use connection", use_connection: true do
   ActiveRecord::Base.establish_connection(adapter: "sqlite3", database: ":memory:")
 
   ActiveRecord::Schema.define do
-    create_table "fakes" do |table|
+    create_table "fakes", id: :integer do |table|
       table.column :name, :string, null: false
       table.column :belonger_id, :integer
       table.column :config, :text
     end
 
-    create_table "belongers" do |table|
+    create_table "belongers", id: :integer do |table|
     end
   end
 
