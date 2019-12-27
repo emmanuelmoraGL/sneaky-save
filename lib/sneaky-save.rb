@@ -83,11 +83,15 @@ module SneakySave
   end
 
   def sneaky_attributes_values
-    if sneaky_new_rails?
-      send :arel_attributes_with_values_for_create, attribute_names
-    else
-      send :arel_attributes_values
-    end
+    attribute_values =  case rails_version
+                        when (5..6)
+                          send :attributes_for_create, attribute_names
+                        when 4
+                          send :arel_attributes_with_values_for_create, attribute_names
+                        else
+                          send :arel_attributes_values
+                        end
+    attribute_values
   end
 
   def sneaky_update_fields
@@ -105,7 +109,11 @@ module SneakySave
   end
 
   def sneaky_new_rails?
-    ActiveRecord::VERSION::STRING.to_i > 3
+    rails_version > 3
+  end
+
+  def rails_version
+    ActiveRecord::VERSION::STRING.to_i
   end
 end
 
