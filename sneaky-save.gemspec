@@ -20,6 +20,6 @@ Gem::Specification.new do |s|
   s.description = 'ActiveRecord extension. Allows to save record without calling callbacks and validations.'
   s.summary = 'Allows to save record without calling callbacks and validations.'
 
-  s.add_runtime_dependency 'activerecord', '>= 6.0.0', '< 7.0.0'
+  s.add_runtime_dependency 'activerecord', '>= 6.0.0', '< 8.0'
   s.add_development_dependency 'rspec'
 end
